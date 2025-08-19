@@ -1,6 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
-
 #include "QuadShooterWeaponComponent.h"
 #include "QuadShooterCharacter.h"
 #include "QuadShooterProjectile.h"
@@ -13,21 +10,23 @@
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 
-// Sets default values for this component's properties
+
 UQuadShooterWeaponComponent::UQuadShooterWeaponComponent()
 {
-	// Default offset from the character location for projectiles to spawn
+	
 	MuzzleOffset = FVector(100.0f, 0.0f, 10.0f);
 }
 
 
 void UQuadShooterWeaponComponent::Fire()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Firing On Client"));
+	
 	if (Character == nullptr || Character->GetController() == nullptr)
 	{
 		return;
 	}
-
+ 
 	// Try and fire a projectile
 	if (ProjectileClass != nullptr)
 	{
@@ -36,28 +35,24 @@ void UQuadShooterWeaponComponent::Fire()
 		{
 			APlayerController* PlayerController = Cast<APlayerController>(Character->GetController());
 			const FRotator SpawnRotation = PlayerController->PlayerCameraManager->GetCameraRotation();
-			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
 			const FVector SpawnLocation = GetOwner()->GetActorLocation() + SpawnRotation.RotateVector(MuzzleOffset);
 	
-			//Set Spawn Collision Handling Override
 			FActorSpawnParameters ActorSpawnParams;
 			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 	
-			// Spawn the projectile at the muzzle
 			World->SpawnActor<AQuadShooterProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+
+			ServerFire(SpawnLocation, SpawnRotation);
 		}
 	}
 	
-	// Try and play the sound if specified
 	if (FireSound != nullptr)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, FireSound, Character->GetActorLocation());
 	}
 	
-	// Try and play a firing animation if specified
 	if (FireAnimation != nullptr)
 	{
-		// Get the animation object for the arms mesh
 		UAnimInstance* AnimInstance = Character->GetMesh1P()->GetAnimInstance();
 		if (AnimInstance != nullptr)
 		{
@@ -66,32 +61,40 @@ void UQuadShooterWeaponComponent::Fire()
 	}
 }
 
+//validates can fire
+bool UQuadShooterWeaponComponent::ServerFire_Validate(FVector MuzzleLocation, FRotator MuzzleRotation)
+{
+	return false;
+	 
+}
+
+void UQuadShooterWeaponComponent::ServerFire_Implementation(FVector MuzzleLocation, FRotator MuzzleRotation)
+{
+	UE_LOG(LogTemp, Warning, TEXT("ServerFireImplementation called"));
+}
+
 bool UQuadShooterWeaponComponent::AttachWeapon(AQuadShooterCharacter* TargetCharacter)
 {
 	Character = TargetCharacter;
 
-	// Check that the character is valid, and has no weapon component yet
 	if (Character == nullptr || Character->GetInstanceComponents().FindItemByClass<UQuadShooterWeaponComponent>())
 	{
 		return false;
 	}
 
-	// Attach the weapon to the First Person Character
 	FAttachmentTransformRules AttachmentRules(EAttachmentRule::SnapToTarget, true);
 	AttachToComponent(Character->GetMesh1P(), AttachmentRules, FName(TEXT("GripPoint")));
+	
 
-	// Set up action bindings
 	if (APlayerController* PlayerController = Cast<APlayerController>(Character->GetController()))
 	{
 		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
-			// Set the priority of the mapping to 1, so that it overrides the Jump action with the Fire action when using touch input
 			Subsystem->AddMappingContext(FireMappingContext, 1);
 		}
 
 		if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerController->InputComponent))
 		{
-			// Fire
 			EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this, &UQuadShooterWeaponComponent::Fire);
 		}
 	}
@@ -101,10 +104,8 @@ bool UQuadShooterWeaponComponent::AttachWeapon(AQuadShooterCharacter* TargetChar
 
 void UQuadShooterWeaponComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	// ensure we have a character owner
 	if (Character != nullptr)
 	{
-		// remove the input mapping context from the Player Controller
 		if (APlayerController* PlayerController = Cast<APlayerController>(Character->GetController()))
 		{
 			if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
@@ -114,6 +115,5 @@ void UQuadShooterWeaponComponent::EndPlay(const EEndPlayReason::Type EndPlayReas
 		}
 	}
 
-	// maintain the EndPlay call chain
 	Super::EndPlay(EndPlayReason);
 }
