@@ -1,19 +1,27 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "QuadShooterWeaponComponent.generated.h"
+#include "GameFramework/Actor.h"
+#include "../QuadShooterProjectile.h"
+#include "QuadShooter/QuadShooterPickUpComponent.h"
+#include "QWeapon.generated.h"
 
-class AQuadShooterCharacter;
-
-UCLASS(Blueprintable, BlueprintType, ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class QUADSHOOTER_API UQuadShooterWeaponComponent : public USkeletalMeshComponent
+UCLASS()
+class QUADSHOOTER_API AQWeapon : public AActor
 {
 	GENERATED_BODY()
-
+	
 public:
+	
+	AQWeapon();
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Gameplay)
+	USkeletalMeshComponent* WeaponMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Gameplay)
+	UQuadShooterPickUpComponent* Pickup;
 	
 	UPROPERTY(EditDefaultsOnly, Category=Projectile)
 	TSubclassOf<class AQuadShooterProjectile> ProjectileClass;
@@ -29,30 +37,26 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
 	class UInputMappingContext* FireMappingContext;
-
-
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Input, meta=(AllowPrivateAccess = "true"))
 	class UInputAction* FireAction;
 
-	
-	UQuadShooterWeaponComponent();
-
-
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	bool AttachWeapon(AQuadShooterCharacter* TargetCharacter);
-
+	
 	UFUNCTION(BlueprintCallable, Category="Weapon")
 	void Fire();
-
+	
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerFire(FVector MuzzleLocation, FRotator MuzzleRotation);
 	bool ServerFire_Validate(FVector MuzzleLocation, FRotator MuzzleRotation);
 	void ServerFire_Implementation(FVector MuzzleLocation, FRotator MuzzleRotation);
 
-protected:
+	virtual void Tick(float DeltaTime) override;
+	virtual void BeginPlay() override;
 	
-	UFUNCTION()
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+protected:
+
 
 private:
 	/** The Character holding this weapon*/
