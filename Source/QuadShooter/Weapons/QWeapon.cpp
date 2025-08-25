@@ -58,7 +58,6 @@ bool AQWeapon::AttachWeapon(AQuadShooterCharacter* TargetCharacter)
 
 void AQWeapon::Fire()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Fire on client"));
 	if (Character == nullptr || Character->GetController() == nullptr)
 	{
 		return;
@@ -78,8 +77,11 @@ void AQWeapon::Fire()
 			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
 			
 			World->SpawnActor<AQuadShooterProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
-	
-			ServerFire(SpawnLocation, SpawnRotation);
+
+			if (!HasAuthority())
+			{
+				ServerFire(SpawnLocation, SpawnRotation);
+			}
 		}
 	}
 	
@@ -107,6 +109,12 @@ bool AQWeapon::ServerFire_Validate(FVector MuzzleLocation, FRotator MuzzleRotati
 void AQWeapon::ServerFire_Implementation(FVector MuzzleLocation, FRotator MuzzleRotation)
 {
 	UE_LOG(LogTemp, Warning, TEXT("ServerFire implementation called"));
+
+	FActorSpawnParameters ActorSpawnParams;
+	ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+			
+	GetWorld()->SpawnActor<AQuadShooterProjectile>(ProjectileClass, MuzzleLocation, MuzzleRotation, ActorSpawnParams);
+
 }
 
 // Called every frame
